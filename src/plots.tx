@@ -1,0 +1,275 @@
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import numpy as np
+
+# Load the dataset
+data = pd.read_csv('/content/Combined_Health_and_Labels_Data.csv')
+
+# ----- 1️⃣ Self-Reported Sleep Quality vs Actual Total Sleep (Scatter Plot) -----
+data_sleep_quality = data.dropna(subset=["Total Sleep", "How well-rested do you feel upon waking up?"])
+
+fig1 = px.scatter(
+    data_sleep_quality,
+    x="Total Sleep",
+    y="How well-rested do you feel upon waking up?",
+    color="How well-rested do you feel upon waking up?",
+    title="Self-Reported Sleep Quality vs Actual Total Sleep",
+    labels={
+        "Total Sleep": "Total Sleep (Hours)",
+        "How well-rested do you feel upon waking up?": "Self-Reported Sleep Quality"
+    }
+)
+
+# ----- 2️⃣ Energy Level in Morning vs Deep Sleep Hours (Scatter Plot) -----
+data_bubble = data.dropna(subset=["Total Sleep", "Sleep Analysis [Deep] (hr)", "How was your energy level in the Morning?"])
+
+fig2 = px.scatter(
+    data_bubble,
+    x="Sleep Analysis [Deep] (hr)",
+    y="How was your energy level in the Morning?",
+    color="How was your energy level in the Morning?",
+    size="Total Sleep",  # Bubble size by total sleep
+    title="Energy Level in Morning vs Deep Sleep Hours",
+    labels={
+        "Sleep Analysis [Deep] (hr)": "Deep Sleep (Hours)",
+        "How was your energy level in the Morning?": "Morning Energy Level"
+    }
+)
+
+# ----- 3️⃣ Caffeine Intake vs REM Sleep Duration (Box Plot) -----
+data_box = data.dropna(subset=["Sleep Analysis [REM] (hr)", "Did you consume caffeine or alcohol before bed?"])
+
+fig3 = px.box(
+    data_box,
+    x="Did you consume caffeine or alcohol before bed?",
+    y="Sleep Analysis [REM] (hr)",
+    color="Did you consume caffeine or alcohol before bed?",
+    title="Caffeine Intake vs REM Sleep Duration",
+    labels={
+        "Did you consume caffeine or alcohol before bed?": "Caffeine Intake",
+        "Sleep Analysis [REM] (hr)": "REM Sleep (Hours)"
+    }
+)
+
+# ----- 4️⃣ Activity Timing vs Sleep Duration (Bar Chart) -----
+data_activity = data.dropna(subset=["Total Sleep", "If you have done any physical activity. What time have you done?"])
+
+activity_avg = data_activity.groupby("If you have done any physical activity. What time have you done?")["Total Sleep"].mean().reset_index()
+
+fig4 = px.bar(
+    activity_avg,
+    x="If you have done any physical activity. What time have you done?",
+    y="Total Sleep",
+    color="If you have done any physical activity. What time have you done?",
+    title="Activity Timing vs Sleep Duration",
+    labels={
+        "If you have done any physical activity. What time have you done?": "Activity Timing",
+        "Total Sleep": "Average Total Sleep (Hours)"
+    },
+    category_orders={"If you have done any physical activity. What time have you done?": ["Morning", "Afternoon", "Evening"]}
+)
+
+# Add individual data points on top of bars
+fig4.add_trace(
+    go.Scatter(
+        x=data_activity["If you have done any physical activity. What time have you done?"],
+        y=data_activity["Total Sleep"],
+        mode="markers",
+        marker=dict(
+            color="rgba(0, 0, 0, 0.5)",
+            size=6
+        ),
+        name="Individual Data Points"
+    )
+)
+
+# ----- 5️⃣ Mood vs Sleep Stages (Stacked Bar Chart) -----
+data_mood = data.dropna(subset=["Sleep Analysis [REM] (hr)", "Sleep Analysis [Deep] (hr)", 
+                               "Sleep Analysis [Core] (hr)", "What was your mood after waking up?"])
+
+# Calculate mean sleep stages by mood
+mood_avg = data_mood.groupby("What was your mood after waking up?").agg({
+    "Sleep Analysis [REM] (hr)": "mean", 
+    "Sleep Analysis [Deep] (hr)": "mean", 
+    "Sleep Analysis [Core] (hr)": "mean"
+}).reset_index()
+
+# Create stacked bar chart
+fig5 = go.Figure()
+
+# Add sleep stages one by one
+fig5.add_trace(go.Bar(
+    x=mood_avg["What was your mood after waking up?"],
+    y=mood_avg["Sleep Analysis [REM] (hr)"],
+    name="REM Sleep",
+    marker_color="#4834d4"
+))
+
+fig5.add_trace(go.Bar(
+    x=mood_avg["What was your mood after waking up?"],
+    y=mood_avg["Sleep Analysis [Deep] (hr)"],
+    name="Deep Sleep",
+    marker_color="#1dd1a1"
+))
+
+fig5.add_trace(go.Bar(
+    x=mood_avg["What was your mood after waking up?"],
+    y=mood_avg["Sleep Analysis [Core] (hr)"],
+    name="Core Sleep",
+    marker_color="#feca57"
+))
+
+# Update layout
+fig5.update_layout(
+    title="Mood vs Sleep Stages",
+    xaxis_title="Mood After Waking Up",
+    yaxis_title="Average Hours",
+    barmode="stack",
+    legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="center",
+        x=0.5
+    )
+)
+
+# ----- 6️⃣ Workload vs Sleep Duration (Bar Chart with Error Bars) -----
+data_workload = data.dropna(subset=["Total Sleep", "How would you rate your workload for yesterday?"])
+
+# Calculate mean and standard deviation
+workload_stats = data_workload.groupby("How would you rate your workload for yesterday?").agg({
+    "Total Sleep": ["mean", "std"]
+}).reset_index()
+workload_stats.columns = ["Workload", "Mean", "Std"]
+
+# For cases where there's only one sample in a group (std is NaN)
+workload_stats["Std"] = workload_stats["Std"].fillna(0)
+
+# Create the bar chart with error bars
+fig6 = go.Figure()
+
+fig6.add_trace(go.Bar(
+    x=workload_stats["Workload"],
+    y=workload_stats["Mean"],
+    error_y=dict(
+        type="data",
+        array=workload_stats["Std"],
+        visible=True
+    ),
+    marker_color="#4834d4",
+    name="Average Sleep Duration"
+))
+
+# Update layout
+fig6.update_layout(
+    title="Workload vs Sleep Duration",
+    xaxis_title="Workload Rating",
+    yaxis_title="Average Total Sleep (Hours)",
+    xaxis=dict(
+        categoryorder="array",
+        categoryarray=["Light", "Moderate", "Heavy"]
+    )
+)
+
+# ----- 7️⃣ Afternoon Energy Levels vs Total Sleep (Scatter Plot) -----
+data_afternoon_energy = data.dropna(subset=["How was your energy level in the Afternoon?", "Total Sleep"])
+
+fig7 = px.scatter(
+    data_afternoon_energy,
+    x="Total Sleep",
+    y="How was your energy level in the Afternoon?",
+    color="How was your energy level in the Afternoon?",
+    title="Afternoon Energy Levels vs Total Sleep",
+    labels={
+        "Total Sleep": "Total Sleep (Hours)",
+        "How was your energy level in the Afternoon?": "Afternoon Energy Level"
+    }
+)
+
+# ----- 8️⃣ Nap Frequency vs Sleep Duration (Bar Chart) -----
+data_nap = data.dropna(subset=["Did you feel the need to take a nap during the day?", "Total Sleep"])
+
+fig8 = px.bar(
+    data_nap,
+    x="Did you feel the need to take a nap during the day?",
+    y="Total Sleep",
+    color="Did you feel the need to take a nap during the day?",
+    title="Nap Frequency vs Sleep Duration",
+    labels={
+        "Did you feel the need to take a nap during the day?": "Nap Need",
+        "Total Sleep": "Total Sleep (Hours)"
+    },
+    barmode='group'
+)
+
+# ----- 9️⃣ Dinner Time vs Sleep Duration (Scatter Plot) -----
+# We'll treat Dinner Time as an approximate hour for comparison
+data_dinner = data.dropna(subset=["What time you had Dinner?", "Total Sleep"])
+
+# Extracting dinner hour from the text time (if format allows)
+import re
+
+def extract_hour(x):
+    try:
+        match = re.search(r'(\d+):(\d+)', str(x))
+        if match:
+            hour = int(match.group(1))
+            if 'PM' in x.upper() and hour != 12:
+                hour += 12
+            elif 'AM' in x.upper() and hour == 12:
+                hour = 0
+            return hour
+    except:
+        return None
+    return None
+
+data_dinner['Dinner Hour'] = data_dinner['What time you had Dinner?'].apply(extract_hour)
+data_dinner = data_dinner.dropna(subset=["Dinner Hour"])
+
+fig9 = px.scatter(
+    data_dinner,
+    x="Dinner Hour",
+    y="Total Sleep",
+    color="Dinner Hour",
+    title="Dinner Time vs Sleep Duration",
+    labels={
+        "Dinner Hour": "Dinner Time (Hour of Day)",
+        "Total Sleep": "Total Sleep (Hours)"
+    }
+)
+
+# ----- 🔟 Sleep Quality Distribution (Donut Chart) -----
+data_summary = data.dropna(subset=["How well-rested do you feel upon waking up?"])
+sleep_quality_counts = data_summary["How well-rested do you feel upon waking up?"].value_counts()
+
+fig10 = go.Figure(data=[go.Pie(
+    labels=sleep_quality_counts.index,
+    values=sleep_quality_counts.values,
+    hole=.4,
+    marker_colors=["#ff6b6b", "#feca57", "#1dd1a1"]
+)])
+
+fig10.update_layout(
+    title="Sleep Quality Distribution",
+    annotations=[{
+        "text": "Sleep<br>Quality",
+        "x": 0.5,
+        "y": 0.5,
+        "font_size": 20,
+        "showarrow": False
+    }]
+)
+
+# Show all ten plots
+fig1.show()
+fig2.show()
+fig3.show()
+fig4.show()
+fig5.show()
+fig6.show()
+fig7.show()
+fig8.show()
+fig9.show()
+fig10.show()
