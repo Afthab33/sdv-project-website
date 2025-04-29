@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense, useEffect } from 'react';
 import { 
   Moon, 
   Zap, 
@@ -11,7 +11,13 @@ import {
   Utensils, 
   PieChart,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Menu,
+  X,
+  Grid,
+  LayoutGrid,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 
 // Lazy load all chart components
@@ -29,6 +35,31 @@ const Chart10_SleepQualitySummary = lazy(() => import('./Chart10_SleepQualitySum
 const Dashboard = () => {
   const [activeSlide, setActiveSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [compactMode, setCompactMode] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [windowSize, setWindowSize] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 0,
+    height: typeof window !== 'undefined' ? window.innerHeight : 0
+  });
+
+  // Update window size on resize
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    // Auto-enable compact mode on smaller screens
+    if (window.innerWidth < 1024 && !compactMode) {
+      setCompactMode(true);
+    }
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, [compactMode]);
 
   // Define all charts with titles and descriptions
   const charts = [
@@ -118,70 +149,180 @@ const Dashboard = () => {
   const ActiveChartComponent = charts[activeSlide].component;
   const ActiveIcon = charts[activeSlide].icon;
 
+  // Toggle compact mode
+  const toggleCompactMode = () => {
+    setCompactMode(!compactMode);
+  };
+
+  // Toggle mobile menu
+  const toggleMenu = () => {
+    setMenuOpen(!menuOpen);
+  };
+
+  // Close menu when selecting a chart on mobile
+  const selectChart = (index) => {
+    setActiveSlide(index);
+    if (windowSize.width < 768) {
+      setMenuOpen(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Improved Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 overflow-x-hidden">
+      {/* Responsive Navbar */}
+      <nav className="sticky top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-2.5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600">
-                <Moon size={20} className="text-white" />
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600">
+                <Moon size={windowSize.width < 768 ? 16 : 18} className="text-white" />
               </div>
-              <h1 className="text-xl font-semibold bg-gradient-to-r from-indigo-600 to-purple-700 bg-clip-text text-transparent">
+              <h1 className={`font-semibold bg-gradient-to-r from-indigo-600 to-purple-700 bg-clip-text text-transparent ${windowSize.width < 768 ? 'text-base' : 'text-lg'}`}>
                 SleepInsights
               </h1>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={toggleCompactMode}
+                className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                title={compactMode ? "Expanded view" : "Compact view"}
+              >
+                {compactMode ? <Maximize2 size={18} /> : <Minimize2 size={18} />}
+              </button>
+              
+              {/* Mobile menu button */}
+              <button 
+                className="md:hidden p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                onClick={toggleMenu}
+              >
+                {menuOpen ? <X size={18} /> : <Menu size={18} />}
+              </button>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Reduced Header */}
-      <header className="pt-20 pb-10 px-6 bg-gradient-to-r from-indigo-700 to-purple-800 relative overflow-hidden">
-        {/* Simplified decorative elements */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-1/4 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2"></div>
-          <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-purple-300/10 rounded-full translate-y-1/3"></div>
-        </div>
-        
-        <div className="max-w-7xl mx-auto relative">
-          <div className="max-w-2xl">
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3 leading-tight">
-              Sleep Quality <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 to-purple-200">Insights Dashboard</span>
-            </h1>
-            
-            <p className="text-base text-indigo-100 leading-relaxed">
-              Interactive visualizations exploring connections between daily habits and sleep patterns.
-            </p>
+      {/* Optional header - only show in expanded mode */}
+      {!compactMode && (
+        <header className="py-4 px-4 md:px-6 bg-gradient-to-r from-indigo-700 to-purple-800 relative overflow-hidden">
+          <div className="max-w-7xl mx-auto relative">
+            <div className="max-w-2xl">
+              <h1 className={`font-bold text-white leading-tight ${windowSize.width < 768 ? 'text-xl' : 'text-2xl'}`}>
+                Sleep Quality <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 to-purple-200">Insights Dashboard</span>
+              </h1>
+              <p className="text-sm text-indigo-100 mt-1 leading-relaxed">
+                Interactive visualizations exploring connections between daily habits and sleep patterns.
+              </p>
+            </div>
+          </div>
+        </header>
+      )}
+
+      {/* Mobile navigation drawer */}
+      <div className={`fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity md:hidden ${menuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+           onClick={() => setMenuOpen(false)}>
+        <div 
+          className={`absolute right-0 top-0 h-full w-64 bg-white shadow-xl transition-transform transform ${menuOpen ? 'translate-x-0' : 'translate-x-full'}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-700">All Visualizations</h3>
+          </div>
+          <div className="overflow-y-auto h-[calc(100%-56px)]">
+            {charts.map((chart, index) => {
+              const ChartIcon = chart.icon;
+              return (
+                <button
+                  key={chart.id}
+                  onClick={() => selectChart(index)}
+                  className={`flex items-center w-full p-3 transition-colors ${
+                    index === activeSlide 
+                      ? 'bg-indigo-50 text-indigo-700' 
+                      : 'hover:bg-slate-50'
+                  }`}
+                >
+                  <div className={`flex-shrink-0 mr-3 ${
+                    index === activeSlide 
+                      ? 'text-indigo-600' 
+                      : 'text-slate-400'
+                  }`}>
+                    <ChartIcon size={16} />
+                  </div>
+                  <div className="text-left overflow-hidden">
+                    <div className={`text-sm truncate ${
+                      index === activeSlide 
+                        ? 'font-medium' 
+                        : 'font-normal text-slate-600'
+                    }`}>
+                      {chart.id}. {chart.title}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-6 pt-10 pb-16 relative">
-        {/* Current chart with title and description - improved */}
+      <main className={`max-w-7xl mx-auto px-4 ${compactMode ? 'pt-3 pb-6' : 'pt-6 pb-10'} relative`}>
+        {/* Main chart area */}
         <div 
-          className="mb-8"
+          className="mb-4"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden transition-all hover:shadow-2xl border border-slate-100">
-            <div className="px-8 py-6 border-b border-slate-100">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2.5 rounded-lg bg-indigo-100 text-indigo-700">
-                  <ActiveIcon size={22} strokeWidth={2} />
+          <div className="bg-white rounded-xl shadow-md overflow-hidden transition-all hover:shadow-lg border border-slate-100">
+            <div className={`px-4 ${compactMode ? 'py-2.5' : 'py-4'} border-b border-slate-100`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-md bg-indigo-100 text-indigo-700">
+                    <ActiveIcon size={windowSize.width < 768 ? 16 : 18} strokeWidth={2} />
+                  </div>
+                  <h2 className={`font-bold text-slate-800 truncate ${windowSize.width < 768 ? 'text-base' : 'text-lg'}`}>
+                    {charts[activeSlide].title}
+                  </h2>
                 </div>
-                <h2 className="text-2xl font-bold text-slate-800">{charts[activeSlide].title}</h2>
+                
+                {/* Integrate navigation controls in header for better space usage */}
+                <div className="flex items-center">
+                  <button 
+                    onClick={prevSlide}
+                    className="p-1.5 rounded-md text-indigo-700 hover:bg-indigo-100 transition-colors"
+                    aria-label="Previous slide"
+                  >
+                    <ChevronLeft size={windowSize.width < 768 ? 16 : 18} />
+                  </button>
+                  <span className="px-2 py-1 text-xs rounded-md bg-indigo-100 text-indigo-700 font-medium mx-1">
+                    {activeSlide + 1} / {charts.length}
+                  </span>
+                  <button 
+                    onClick={nextSlide}
+                    className="p-1.5 rounded-md text-indigo-700 hover:bg-indigo-100 transition-colors"
+                    aria-label="Next slide"
+                  >
+                    <ChevronRight size={windowSize.width < 768 ? 16 : 18} />
+                  </button>
+                </div>
               </div>
-              <p className="text-slate-600 leading-relaxed">{charts[activeSlide].description}</p>
+              
+              {/* Only show description if not in compact mode */}
+              {!compactMode && (
+                <p className="text-slate-600 text-sm mt-2 line-clamp-2">
+                  {charts[activeSlide].description}
+                </p>
+              )}
             </div>
-            <div className="p-6">
+            
+            <div className={`${compactMode ? 'p-2' : 'p-4'}`}>
               <Suspense fallback={
-                <div className="w-full h-[400px] flex flex-col items-center justify-center">
-                  <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
-                  <p className="text-slate-500 animate-pulse">Loading visualization...</p>
+                <div className={`w-full flex flex-col items-center justify-center ${compactMode ? 'h-[300px]' : 'h-[350px]'}`}>
+                  <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-indigo-500 mb-3"></div>
+                  <p className="text-slate-500 text-sm animate-pulse">Loading visualization...</p>
                 </div>
               }>
-                <div className="rounded-xl overflow-hidden aspect-[16/9] h-[400px] w-full flex items-center justify-center">
+                <div className="rounded-lg overflow-hidden w-full flex items-center justify-center"
+                     style={{ height: compactMode ? (windowSize.width < 768 ? '280px' : '300px') : (windowSize.width < 768 ? '300px' : '350px') }}>
                   <ActiveChartComponent />
                 </div>
               </Suspense>
@@ -189,70 +330,61 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Navigation controls moved below the chart */}
-        <div className="flex items-center justify-center mb-8">
-          <button 
-            onClick={prevSlide}
-            className="p-2.5 rounded-lg text-indigo-700 hover:bg-indigo-100 transition-colors"
-            aria-label="Previous slide"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <span className="px-4 py-2 rounded-md bg-indigo-100 text-indigo-700 font-medium mx-4">
-            {activeSlide + 1} / {charts.length}
-          </span>
-          <button 
-            onClick={nextSlide}
-            className="p-2.5 rounded-lg text-indigo-700 hover:bg-indigo-100 transition-colors"
-            aria-label="Next slide"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
-
-        {/* Mini chart navigation - improved */}
-        <div className="pb-12">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">All Visualizations</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* Mini chart navigation - Only visible on tablet and desktop */}
+        <div className="hidden md:block pb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-slate-700">All Visualizations</h3>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 gap-2">
             {charts.map((chart, index) => {
               const ChartIcon = chart.icon;
               return (
                 <button
                   key={chart.id}
                   onClick={() => setActiveSlide(index)}
-                  className={`flex items-center p-4 h-24 rounded-xl transition-all group ${
+                  className={`flex items-center p-2 h-[40px] rounded-lg transition-all ${
                     index === activeSlide 
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' 
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md' 
                       : 'bg-white text-slate-600 hover:bg-white/50 shadow-sm hover:shadow border border-slate-100'
                   }`}
                 >
-                  <div className={`flex-shrink-0 mr-3 ${
+                  <div className={`flex-shrink-0 mr-2 ${
                     index === activeSlide 
                       ? 'text-white' 
-                      : 'text-indigo-500 group-hover:text-indigo-600'
+                      : 'text-indigo-500'
                   }`}>
-                    <ChartIcon size={20} />
+                    <ChartIcon size={14} />
                   </div>
                   <div className="text-left overflow-hidden">
-                    <div className={`font-medium truncate ${
+                    <div className={`text-xs truncate font-medium ${
                       index === activeSlide 
                         ? 'text-white' 
-                        : 'text-slate-700 group-hover:text-slate-900'
+                        : 'text-slate-700'
                     }`}>
-                      {chart.id}. {chart.title.split(' ').slice(0, 2).join(' ')}...
-                    </div>
-                    <div className={`text-xs mt-1 ${
-                      index === activeSlide 
-                        ? 'text-indigo-100' 
-                        : 'text-slate-500'
-                    }`}>
-                      View chart
+                      {chart.id}. {chart.title.split(' ').slice(0, 2).join(' ')}
                     </div>
                   </div>
                 </button>
               );
             })}
           </div>
+        </div>
+        
+        {/* Mobile chart selection buttons - Only visible on small screens */}
+        <div className="md:hidden flex flex-wrap gap-1.5 justify-center">
+          {charts.map((chart, index) => (
+            <button
+              key={chart.id}
+              onClick={() => setActiveSlide(index)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                index === activeSlide 
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md' 
+                  : 'bg-white text-slate-600 border border-slate-200'
+              }`}
+            >
+              {chart.id}
+            </button>
+          ))}
         </div>
       </main>
     </div>
