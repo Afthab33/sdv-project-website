@@ -3,7 +3,7 @@ import * as d3 from 'd3';
 // Utility function to load and parse CSV data
 export const loadData = async () => {
   try {
-    const data = await d3.csv('/src/assets/Combined_Health_and_Labels_Data.csv');
+    const data = await d3.csv('https://raw.githubusercontent.com/Afthab33/sdv-project-website/refs/heads/main/src/assets/Combined_Health_and_Labels_Data.csv');
     
     // Convert numeric columns from strings to numbers
     data.forEach(d => {
